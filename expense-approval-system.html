@@ -1,0 +1,1132 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>财务报销审批系统 - Expense Approval System</title>
+    <script src="https://aisearch-task.bj.bcebos.com/static/tailwindcss-3.4.17.js"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'PingFang SC', 'Microsoft YaHei', sans-serif;
+            background: #f5f7fa;
+        }
+        
+        :root {
+            --primary: #1e3a8a;
+            --primary-light: #3b82f6;
+            --success: #059669;
+            --warning: #d97706;
+            --danger: #dc2626;
+            --sidebar-bg: #0f172a;
+            --card-shadow: 0 1px 3px rgba(0,0,0,0.08), 0 1px 2px rgba(0,0,0,0.06);
+        }
+        
+        .sidebar-item {
+            transition: all 0.2s ease;
+        }
+        
+        .sidebar-item:hover {
+            background: rgba(255,255,255,0.1);
+        }
+        
+        .sidebar-item.active {
+            background: rgba(59, 130, 246, 0.2);
+            border-right: 3px solid #3b82f6;
+        }
+        
+        .expense-card {
+            transition: all 0.2s ease;
+            border-left: 4px solid transparent;
+        }
+        
+        .expense-card:hover {
+            box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+            transform: translateY(-1px);
+        }
+        
+        .expense-card.pending {
+            border-left-color: #f59e0b;
+        }
+        
+        .expense-card.approved {
+            border-left-color: #10b981;
+        }
+        
+        .expense-card.rejected {
+            border-left-color: #ef4444;
+        }
+        
+        .status-badge {
+            font-size: 12px;
+            padding: 4px 10px;
+            border-radius: 20px;
+            font-weight: 500;
+        }
+        
+        .status-pending {
+            background: #fef3c7;
+            color: #92400e;
+        }
+        
+        .status-approved {
+            background: #d1fae5;
+            color: #065f46;
+        }
+        
+        .status-rejected {
+            background: #fee2e2;
+            color: #991b1b;
+        }
+        
+        .status-processing {
+            background: #dbeafe;
+            color: #1e40af;
+        }
+        
+        .btn-primary {
+            background: linear-gradient(135deg, #2563eb, #1d4ed8);
+            color: white;
+            transition: all 0.2s ease;
+        }
+        
+        .btn-primary:hover {
+            background: linear-gradient(135deg, #1d4ed8, #1e40af);
+            transform: translateY(-1px);
+            box-shadow: 0 4px 12px rgba(37, 99, 235, 0.3);
+        }
+        
+        .btn-success {
+            background: linear-gradient(135deg, #059669, #047857);
+            color: white;
+            transition: all 0.2s ease;
+        }
+        
+        .btn-success:hover {
+            background: linear-gradient(135deg, #047857, #065f46);
+            transform: translateY(-1px);
+            box-shadow: 0 4px 12px rgba(5, 150, 105, 0.3);
+        }
+        
+        .btn-danger {
+            background: linear-gradient(135deg, #dc2626, #b91c1c);
+            color: white;
+            transition: all 0.2s ease;
+        }
+        
+        .btn-danger:hover {
+            background: linear-gradient(135deg, #b91c1c, #991b1b);
+            transform: translateY(-1px);
+            box-shadow: 0 4px 12px rgba(220, 38, 38, 0.3);
+        }
+        
+        .modal-overlay {
+            background: rgba(0,0,0,0.5);
+            backdrop-filter: blur(4px);
+        }
+        
+        .timeline-dot {
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+            position: relative;
+        }
+        
+        .timeline-dot::after {
+            content: '';
+            position: absolute;
+            width: 24px;
+            height: 24px;
+            border-radius: 50%;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            opacity: 0.2;
+        }
+        
+        .timeline-dot.completed {
+            background: #10b981;
+        }
+        
+        .timeline-dot.completed::after {
+            background: #10b981;
+        }
+        
+        .timeline-dot.current {
+            background: #3b82f6;
+            animation: pulse 2s infinite;
+        }
+        
+        .timeline-dot.current::after {
+            background: #3b82f6;
+        }
+        
+        .timeline-dot.upcoming {
+            background: #d1d5db;
+        }
+        
+        @keyframes pulse {
+            0%, 100% { transform: translate(-50%, -50%) scale(1); opacity: 0.2; }
+            50% { transform: translate(-50%, -50%) scale(1.2); opacity: 0.3; }
+        }
+        
+        .stat-card {
+            transition: all 0.3s ease;
+        }
+        
+        .stat-card:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 25px rgba(0,0,0,0.1);
+        }
+        
+        .receipt-thumbnail {
+            width: 60px;
+            height: 60px;
+            background: linear-gradient(135deg, #e2e8f0, #cbd5e1);
+            border-radius: 8px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+        
+        .receipt-thumbnail:hover {
+            transform: scale(1.05);
+            box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+        }
+        
+        .fade-in {
+            animation: fadeIn 0.3s ease;
+        }
+        
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        
+        .slide-up {
+            animation: slideUp 0.3s ease;
+        }
+        
+        @keyframes slideUp {
+            from { opacity: 0; transform: translateY(20px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        
+        .tab-active {
+            border-bottom: 2px solid #2563eb;
+            color: #2563eb;
+            font-weight: 600;
+        }
+        
+        input:focus, textarea:focus, select:focus {
+            outline: none;
+            border-color: #3b82f6;
+            box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+        }
+        
+        .toast {
+            animation: slideInRight 0.3s ease, fadeOut 0.3s ease 2.7s;
+        }
+        
+        @keyframes slideInRight {
+            from { transform: translateX(100%); opacity: 0; }
+            to { transform: translateX(0); opacity: 1; }
+        }
+        
+        @keyframes fadeOut {
+            from { opacity: 1; }
+            to { opacity: 0; }
+        }
+    </style>
+</head>
+<body class="min-h-screen">
+    <!-- Toast Container -->
+    <div id="toastContainer" class="fixed top-4 right-4 z-50 space-y-2"></div>
+
+    <div class="flex h-screen overflow-hidden">
+        <!-- Sidebar -->
+        <aside class="w-64 bg-[var(--sidebar-bg)] text-white flex-shrink-0 flex flex-col">
+            <div class="p-5 border-b border-gray-700">
+                <div class="flex items-center gap-3">
+                    <div class="w-10 h-10 bg-gradient-to-br from-blue-500 to-blue-700 rounded-lg flex items-center justify-center">
+                        <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/>
+                        </svg>
+                    </div>
+                    <div>
+                        <h1 class="text-lg font-bold tracking-tight">ExpenseFlow</h1>
+                        <p class="text-xs text-gray-400">财务报销系统</p>
+                    </div>
+                </div>
+            </div>
+            
+            <nav class="flex-1 py-4 overflow-y-auto">
+                <div class="px-4 mb-2">
+                    <p class="text-xs text-gray-500 uppercase tracking-wider mb-2 px-2">主菜单</p>
+                </div>
+                <div class="space-y-1 px-3">
+                    <a href="#" class="sidebar-item active flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm" data-page="dashboard">
+                        <svg class="w-[18px] h-[18px] shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2V6zM14 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2V6zM4 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2v-2zM14 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2v-2z"/>
+                        </svg>
+                        工作台
+                    </a>
+                    <a href="#" class="sidebar-item flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm text-gray-300" data-page="approvals">
+                        <svg class="w-[18px] h-[18px] shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4"/>
+                        </svg>
+                        待我审批
+                        <span class="ml-auto bg-red-500 text-white text-xs px-2 py-0.5 rounded-full">5</span>
+                    </a>
+                    <a href="#" class="sidebar-item flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm text-gray-300" data-page="my-expenses">
+                        <svg class="w-[18px] h-[18px] shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 9V7a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2m2 4h10a2 2 0 002-2v-6a2 2 0 00-2-2H9a2 2 0 00-2 2v6a2 2 0 002 2zm7-5a2 2 0 11-4 0 2 2 0 014 0z"/>
+                        </svg>
+                        我的报销
+                    </a>
+                    <a href="#" class="sidebar-item flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm text-gray-300" data-page="create">
+                        <svg class="w-[18px] h-[18px] shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6"/>
+                        </svg>
+                        新建报销
+                    </a>
+                </div>
+                
+                <div class="px-4 mt-6 mb-2">
+                    <p class="text-xs text-gray-500 uppercase tracking-wider mb-2 px-2">管理</p>
+                </div>
+                <div class="space-y-1 px-3">
+                    <a href="#" class="sidebar-item flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm text-gray-300">
+                        <svg class="w-[18px] h-[18px] shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"/>
+                        </svg>
+                        报表分析
+                    </a>
+                    <a href="#" class="sidebar-item flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm text-gray-300">
+                        <svg class="w-[18px] h-[18px] shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"/>
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/>
+                        </svg>
+                        系统设置
+                    </a>
+                </div>
+            </nav>
+            
+            <!-- User Profile -->
+            <div class="p-4 border-t border-gray-700">
+                <div class="flex items-center gap-3">
+                    <div class="w-9 h-9 rounded-full bg-gradient-to-br from-blue-400 to-purple-500 flex items-center justify-center text-sm font-bold">
+                        张
+                    </div>
+                    <div class="flex-1 min-w-0">
+                        <p class="text-sm font-medium truncate">张明审批</p>
+                        <p class="text-xs text-gray-400 truncate">财务经理</p>
+                    </div>
+                    <button class="text-gray-400 hover:text-white" aria-label="退出登录" onclick="showToast('info', '退出登录', '演示环境中退出功能已禁用')">
+                        <svg class="w-[18px] h-[18px] shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1"/>
+                        </svg>
+                    </button>
+                </div>
+            </div>
+        </aside>
+
+        <!-- Main Content -->
+        <main class="flex-1 flex flex-col overflow-hidden">
+            <!-- Top Header -->
+            <header class="bg-white border-b border-gray-200 px-6 py-4 flex items-center justify-between flex-shrink-0">
+                <div>
+                    <h2 class="text-xl font-bold text-gray-800" id="pageTitle">工作台</h2>
+                    <p class="text-sm text-gray-500" id="pageSubtitle">欢迎回来，您有 5 项待审批报销单</p>
+                </div>
+                <div class="flex items-center gap-4">
+                    <div class="relative">
+                        <input type="text" placeholder="搜索报销单..." class="pl-10 pr-4 py-2 border border-gray-200 rounded-lg text-sm w-64 bg-gray-50 focus:bg-white transition-colors">
+                        <svg class="w-[18px] h-[18px] shrink-0 absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/>
+                        </svg>
+                    </div>
+                    <button class="relative p-2 text-gray-500 hover:text-gray-700 hover:bg-gray-100 rounded-lg" aria-label="通知" onclick="showToast('info', '通知中心', '您暂未有新通知')">
+                        <svg class="w-[18px] h-[18px] shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9"/>
+                        </svg>
+                        <span class="absolute top-1 right-1 w-2 h-2 bg-red-500 rounded-full"></span>
+                    </button>
+                    <button class="btn-primary px-4 py-2 rounded-lg text-sm font-medium flex items-center gap-2" onclick="showCreateModal()">
+                        <svg class="w-[18px] h-[18px] shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6"/>
+                        </svg>
+                        新建报销
+                    </button>
+                </div>
+            </header>
+
+            <!-- Page Content -->
+            <div class="flex-1 overflow-y-auto p-6" id="mainContent">
+                <!-- Stats Cards -->
+                <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-5 mb-6">
+                    <div class="stat-card bg-white rounded-xl p-5 shadow-sm border border-gray-100">
+                        <div class="flex items-center justify-between mb-3">
+                            <div class="w-10 h-10 bg-amber-100 rounded-lg flex items-center justify-center">
+                                <svg class="w-5 h-5 text-amber-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                                </svg>
+                            </div>
+                            <span class="text-xs text-amber-600 font-medium bg-amber-50 px-2 py-1 rounded">待处理</span>
+                        </div>
+                        <p class="text-2xl font-bold text-gray-800">5</p>
+                        <p class="text-sm text-gray-500 mt-1">待审批报销单</p>
+                    </div>
+                    
+                    <div class="stat-card bg-white rounded-xl p-5 shadow-sm border border-gray-100">
+                        <div class="flex items-center justify-between mb-3">
+                            <div class="w-10 h-10 bg-green-100 rounded-lg flex items-center justify-center">
+                                <svg class="w-5 h-5 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                                </svg>
+                            </div>
+                            <span class="text-xs text-green-600 font-medium bg-green-50 px-2 py-1 rounded">本月</span>
+                        </div>
+                        <p class="text-2xl font-bold text-gray-800">¥42,580</p>
+                        <p class="text-sm text-gray-500 mt-1">已审批金额</p>
+                    </div>
+                    
+                    <div class="stat-card bg-white rounded-xl p-5 shadow-sm border border-gray-100">
+                        <div class="flex items-center justify-between mb-3">
+                            <div class="w-10 h-10 bg-blue-100 rounded-lg flex items-center justify-center">
+                                <svg class="w-5 h-5 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 9V7a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2m2 4h10a2 2 0 002-2v-6a2 2 0 00-2-2H9a2 2 0 00-2 2v6a2 2 0 002 2zm7-5a2 2 0 11-4 0 2 2 0 014 0z"/>
+                                </svg>
+                            </div>
+                            <span class="text-xs text-blue-600 font-medium bg-blue-50 px-2 py-1 rounded">总数</span>
+                        </div>
+                        <p class="text-2xl font-bold text-gray-800">28</p>
+                        <p class="text-sm text-gray-500 mt-1">本月报销单</p>
+                    </div>
+                    
+                    <div class="stat-card bg-white rounded-xl p-5 shadow-sm border border-gray-100">
+                        <div class="flex items-center justify-between mb-3">
+                            <div class="w-10 h-10 bg-purple-100 rounded-lg flex items-center justify-center">
+                                <svg class="w-5 h-5 text-purple-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6"/>
+                                </svg>
+                            </div>
+                            <span class="text-xs text-purple-600 font-medium bg-purple-50 px-2 py-1 rounded">效率</span>
+                        </div>
+                        <p class="text-2xl font-bold text-gray-800">1.2天</p>
+                        <p class="text-sm text-gray-500 mt-1">平均审批时长</p>
+                    </div>
+                </div>
+
+                <!-- Tabs and Content -->
+                <div class="bg-white rounded-xl shadow-sm border border-gray-100">
+                    <div class="border-b border-gray-100 px-6">
+                        <div class="flex gap-6">
+                            <button class="tab-btn tab-active py-4 text-sm" data-tab="pending">待审批 (5)</button>
+                            <button class="tab-btn py-4 text-sm text-gray-500 hover:text-gray-700" data-tab="approved">已通过</button>
+                            <button class="tab-btn py-4 text-sm text-gray-500 hover:text-gray-700" data-tab="rejected">已拒绝</button>
+                            <button class="tab-btn py-4 text-sm text-gray-500 hover:text-gray-700" data-tab="all">全部</button>
+                        </div>
+                    </div>
+                    
+                    <!-- Expense List -->
+                    <div id="expenseList" class="divide-y divide-gray-100">
+                        <!-- Expense items will be rendered here -->
+                    </div>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <!-- Approval Modal -->
+    <div id="approvalModal" class="fixed inset-0 z-40 hidden">
+        <div class="modal-overlay absolute inset-0" onclick="closeModal()"></div>
+        <div class="absolute inset-0 flex items-center justify-center p-4">
+            <div class="bg-white rounded-2xl shadow-2xl w-full max-w-4xl max-h-[90vh] overflow-hidden flex flex-col slide-up">
+                <div class="p-6 border-b border-gray-100 flex items-center justify-between">
+                    <div>
+                        <h3 class="text-lg font-bold text-gray-800" id="modalTitle">报销单详情</h3>
+                        <p class="text-sm text-gray-500" id="modalSubtitle">EXP-2024-001234</p>
+                    </div>
+                    <button onclick="closeModal()" class="p-2 hover:bg-gray-100 rounded-lg transition-colors">
+                        <svg class="w-5 h-5 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
+                        </svg>
+                    </button>
+                </div>
+                
+                <div class="flex-1 overflow-y-auto p-6" id="modalContent">
+                    <!-- Modal content will be rendered here -->
+                </div>
+                
+                <div class="p-6 border-t border-gray-100 bg-gray-50" id="modalActions">
+                    <!-- Action buttons will be rendered here -->
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Reject Modal -->
+    <div id="rejectModal" class="fixed inset-0 z-50 hidden">
+        <div class="modal-overlay absolute inset-0" onclick="closeRejectModal()"></div>
+        <div class="absolute inset-0 flex items-center justify-center p-4">
+            <div class="bg-white rounded-xl shadow-2xl w-full max-w-md slide-up">
+                <div class="p-6">
+                    <h3 class="text-lg font-bold text-gray-800 mb-2">拒绝报销</h3>
+                    <p class="text-sm text-gray-500 mb-4">请填写拒绝原因，申请人将收到通知。</p>
+                    <textarea id="rejectReason" rows="4" class="w-full px-4 py-3 border border-gray-200 rounded-lg text-sm resize-none" placeholder="请输入拒绝原因..."></textarea>
+                </div>
+                <div class="px-6 py-4 border-t border-gray-100 bg-gray-50 flex justify-end gap-3 rounded-b-xl">
+                    <button onclick="closeRejectModal()" class="px-4 py-2 text-sm text-gray-600 hover:bg-gray-200 rounded-lg transition-colors">取消</button>
+                    <button onclick="confirmReject()" class="btn-danger px-5 py-2 rounded-lg text-sm font-medium">确认拒绝</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Sample Data
+        const expenses = [
+            {
+                id: 'EXP-2024-001234',
+                title: 'Q4季度北京客户拜访差旅',
+                applicant: '李伟',
+                department: '销售部',
+                amount: 5280.00,
+                date: '2024-12-10',
+                submitDate: '2024-12-12',
+                status: 'pending',
+                type: '差旅报销',
+                items: [
+                    { date: '2024-12-05', category: '交通费', description: '上海-北京高铁往返', amount: 1100.00, receipt: true },
+                    { date: '2024-12-05', category: '住宿费', description: '北京国际酒店3晚', amount: 2880.00, receipt: true },
+                    { date: '2024-12-06', category: '餐饮费', description: '客户商务宴请', amount: 860.00, receipt: true },
+                    { date: '2024-12-06', category: '交通费', description: '市内打车', amount: 440.00, receipt: true }
+                ],
+                approver: '张明审批',
+                history: [
+                    { action: '提交申请', user: '李伟', time: '2024-12-12 14:30', comment: '提交Q4北京差旅报销' },
+                    { action: '审批中', user: '系统', time: '2024-12-12 14:31', comment: '已发送至财务经理审批' }
+                ]
+            },
+            {
+                id: 'EXP-2024-001233',
+                title: '部门团建活动费用',
+                applicant: '王芳',
+                department: '人力资源部',
+                amount: 3650.00,
+                date: '2024-12-08',
+                submitDate: '2024-12-11',
+                status: 'pending',
+                type: '活动报销',
+                items: [
+                    { date: '2024-12-07', category: '餐饮费', description: '团队聚餐', amount: 2400.00, receipt: true },
+                    { date: '2024-12-07', category: '活动费', description: 'KTV活动场地费', amount: 1250.00, receipt: true }
+                ],
+                approver: '张明审批',
+                history: [
+                    { action: '提交申请', user: '王芳', time: '2024-12-11 09:15', comment: '部门团建费用报销' },
+                    { action: '审批中', user: '系统', time: '2024-12-11 09:16', comment: '已发送至财务经理审批' }
+                ]
+            },
+            {
+                id: 'EXP-2024-001232',
+                title: '办公用品采购',
+                applicant: '陈强',
+                department: '行政部',
+                amount: 892.50,
+                date: '2024-12-09',
+                submitDate: '2024-12-10',
+                status: 'pending',
+                type: '采购报销',
+                items: [
+                    { date: '2024-12-09', category: '办公费', description: '打印纸、墨盒等办公用品', amount: 892.50, receipt: true }
+                ],
+                approver: '张明审批',
+                history: [
+                    { action: '提交申请', user: '陈强', time: '2024-12-10 16:45', comment: '办公用品采购报销' },
+                    { action: '审批中', user: '系统', time: '2024-12-10 16:46', comment: '已发送至财务经理审批' }
+                ]
+            },
+            {
+                id: 'EXP-2024-001231',
+                title: '技术培训课程费用',
+                applicant: '刘洋',
+                department: '研发部',
+                amount: 2999.00,
+                date: '2024-12-05',
+                submitDate: '2024-12-09',
+                status: 'pending',
+                type: '培训报销',
+                items: [
+                    { date: '2024-12-03', category: '培训费', description: '云原生架构师认证课程', amount: 2999.00, receipt: true }
+                ],
+                approver: '张明审批',
+                history: [
+                    { action: '提交申请', user: '刘洋', time: '2024-12-09 11:20', comment: '技术培训课程报销' },
+                    { action: '审批中', user: '系统', time: '2024-12-09 11:21', comment: '已发送至财务经理审批' }
+                ]
+            },
+            {
+                id: 'EXP-2024-001230',
+                title: '客户招待下午茶',
+                applicant: '赵雪',
+                department: '市场部',
+                amount: 468.00,
+                date: '2024-12-06',
+                submitDate: '2024-12-08',
+                status: 'pending',
+                type: '招待报销',
+                items: [
+                    { date: '2024-12-06', category: '招待费', description: '客户会议茶点', amount: 468.00, receipt: true }
+                ],
+                approver: '张明审批',
+                history: [
+                    { action: '提交申请', user: '赵雪', time: '2024-12-08 15:00', comment: '客户招待费用报销' },
+                    { action: '审批中', user: '系统', time: '2024-12-08 15:01', comment: '已发送至财务经理审批' }
+                ]
+            },
+            {
+                id: 'EXP-2024-001225',
+                title: '上海出差交通住宿',
+                applicant: '孙明',
+                department: '产品部',
+                amount: 3850.00,
+                date: '2024-12-01',
+                submitDate: '2024-12-03',
+                status: 'approved',
+                type: '差旅报销',
+                items: [
+                    { date: '2024-11-28', category: '交通费', description: '机票往返', amount: 2400.00, receipt: true },
+                    { date: '2024-11-28', category: '住宿费', description: '酒店2晚', amount: 1450.00, receipt: true }
+                ],
+                approver: '张明审批',
+                approveDate: '2024-12-04',
+                history: [
+                    { action: '提交申请', user: '孙明', time: '2024-12-03 10:00', comment: '上海出差费用' },
+                    { action: '审批通过', user: '张明审批', time: '2024-12-04 09:30', comment: '符合差旅标准，同意报销' }
+                ]
+            },
+            {
+                id: 'EXP-2024-001220',
+                title: '团队聚餐活动',
+                applicant: '周婷',
+                department: '客服部',
+                amount: 1280.00,
+                date: '2024-11-25',
+                submitDate: '2024-11-28',
+                status: 'approved',
+                type: '活动报销',
+                items: [
+                    { date: '2024-11-24', category: '餐饮费', description: '月度团队聚餐', amount: 1280.00, receipt: true }
+                ],
+                approver: '张明审批',
+                approveDate: '2024-11-29',
+                history: [
+                    { action: '提交申请', user: '周婷', time: '2024-11-28 14:20', comment: '团队月度聚餐' },
+                    { action: '审批通过', user: '张明审批', time: '2024-11-29 11:00', comment: '审批通过' }
+                ]
+            },
+            {
+                id: 'EXP-2024-001215',
+                title: '高端商务宴请',
+                applicant: '吴磊',
+                department: '销售部',
+                amount: 8600.00,
+                date: '2024-11-20',
+                submitDate: '2024-11-22',
+                status: 'rejected',
+                type: '招待报销',
+                items: [
+                    { date: '2024-11-19', category: '餐饮费', description: 'VIP客户宴请', amount: 8600.00, receipt: true }
+                ],
+                approver: '张明审批',
+                rejectDate: '2024-11-23',
+                rejectReason: '单笔餐饮费用超出公司标准（人均不超过500元），请拆分或提供特殊说明后重新提交。',
+                history: [
+                    { action: '提交申请', user: '吴磊', time: '2024-11-22 16:30', comment: '重要客户宴请' },
+                    { action: '已拒绝', user: '张明审批', time: '2024-11-23 10:15', comment: '单笔餐饮费用超出公司标准（人均不超过500元），请拆分或提供特殊说明后重新提交。' }
+                ]
+            }
+        ];
+
+        let currentTab = 'pending';
+        let currentExpenseId = null;
+
+        // Render expense list
+        function renderExpenseList(tab = 'pending') {
+            const list = document.getElementById('expenseList');
+            let filtered = expenses;
+            
+            if (tab === 'pending') filtered = expenses.filter(e => e.status === 'pending');
+            else if (tab === 'approved') filtered = expenses.filter(e => e.status === 'approved');
+            else if (tab === 'rejected') filtered = expenses.filter(e => e.status === 'rejected');
+            
+            if (filtered.length === 0) {
+                list.innerHTML = `
+                    <div class="p-12 text-center">
+                        <svg class="w-16 h-16 mx-auto text-gray-300 mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/>
+                        </svg>
+                        <p class="text-gray-500">暂无${tab === 'pending' ? '待审批' : tab === 'approved' ? '已通过' : tab === 'rejected' ? '已拒绝' : ''}报销单</p>
+                    </div>
+                `;
+                return;
+            }
+            
+            list.innerHTML = filtered.map(expense => `
+                <div class="expense-card ${expense.status} p-5 cursor-pointer fade-in" onclick="openModal('${expense.id}')">
+                    <div class="flex items-start justify-between">
+                        <div class="flex-1">
+                            <div class="flex items-center gap-3 mb-2">
+                                <h4 class="font-semibold text-gray-800">${expense.title}</h4>
+                                <span class="status-badge status-${expense.status}">
+                                    ${expense.status === 'pending' ? '待审批' : expense.status === 'approved' ? '已通过' : '已拒绝'}
+                                </span>
+                                <span class="text-xs text-gray-400 bg-gray-100 px-2 py-0.5 rounded">${expense.type}</span>
+                            </div>
+                            <div class="flex items-center gap-4 text-sm text-gray-500">
+                                <span class="flex items-center gap-1.5">
+                                    <svg class="w-[14px] h-[14px]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"/>
+                                    </svg>
+                                    ${expense.applicant} · ${expense.department}
+                                </span>
+                                <span class="flex items-center gap-1.5">
+                                    <svg class="w-[14px] h-[14px]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"/>
+                                    </svg>
+                                    ${expense.submitDate}
+                                </span>
+                                <span class="flex items-center gap-1.5">
+                                    <svg class="w-[14px] h-[14px]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"/>
+                                    </svg>
+                                    ${expense.items.length}项费用
+                                </span>
+                            </div>
+                        </div>
+                        <div class="text-right ml-6">
+                            <p class="text-xl font-bold text-gray-800">¥${expense.amount.toLocaleString('zh-CN', {minimumFractionDigits: 2})}</p>
+                            <div class="flex items-center justify-end gap-2 mt-2">
+                                ${expense.status === 'pending' ? `
+                                    <button onclick="event.stopPropagation(); quickApprove('${expense.id}')" class="btn-success px-3 py-1.5 rounded-lg text-xs font-medium flex items-center gap-1">
+                                        <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/>
+                                        </svg>
+                                        通过
+                                    </button>
+                                    <button onclick="event.stopPropagation(); openRejectModal('${expense.id}')" class="btn-danger px-3 py-1.5 rounded-lg text-xs font-medium flex items-center gap-1">
+                                        <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
+                                        </svg>
+                                        拒绝
+                                    </button>
+                                ` : `
+                                    <button class="text-blue-600 text-sm hover:text-blue-700 font-medium">查看详情 →</button>
+                                `}
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            `).join('');
+        }
+
+        // Open detail modal
+        function openModal(expenseId) {
+            currentExpenseId = expenseId;
+            const expense = expenses.find(e => e.id === expenseId);
+            if (!expense) return;
+            
+            document.getElementById('modalTitle').textContent = expense.title;
+            document.getElementById('modalSubtitle').textContent = `${expense.id} · ${expense.type}`;
+            
+            const content = document.getElementById('modalContent');
+            content.innerHTML = `
+                <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                    <div class="lg:col-span-2 space-y-6">
+                        <!-- Expense Summary -->
+                        <div>
+                            <h4 class="text-sm font-semibold text-gray-700 mb-3 flex items-center gap-2">
+                                <svg class="w-[16px] h-[16px] text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/>
+                                </svg>
+                                费用明细
+                            </h4>
+                            <div class="border border-gray-200 rounded-lg overflow-hidden">
+                                <table class="w-full text-sm">
+                                    <thead class="bg-gray-50">
+                                        <tr>
+                                            <th class="px-4 py-3 text-left font-medium text-gray-600">日期</th>
+                                            <th class="px-4 py-3 text-left font-medium text-gray-600">类别</th>
+                                            <th class="px-4 py-3 text-left font-medium text-gray-600">说明</th>
+                                            <th class="px-4 py-3 text-right font-medium text-gray-600">金额</th>
+                                            <th class="px-4 py-3 text-center font-medium text-gray-600">发票</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody class="divide-y divide-gray-100">
+                                        ${expense.items.map(item => `
+                                            <tr class="hover:bg-gray-50">
+                                                <td class="px-4 py-3 text-gray-600">${item.date}</td>
+                                                <td class="px-4 py-3">
+                                                    <span class="px-2 py-1 bg-blue-50 text-blue-700 rounded text-xs">${item.category}</span>
+                                                </td>
+                                                <td class="px-4 py-3 text-gray-800">${item.description}</td>
+                                                <td class="px-4 py-3 text-right font-medium text-gray-800">¥${item.amount.toLocaleString('zh-CN', {minimumFractionDigits: 2})}</td>
+                                                <td class="px-4 py-3 text-center">
+                                                    ${item.receipt ? `
+                                                        <div class="receipt-thumbnail mx-auto" title="查看发票">
+                                                            <svg class="w-6 h-6 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"/>
+                                                            </svg>
+                                                        </div>
+                                                    ` : '-'}
+                                                </td>
+                                            </tr>
+                                        `).join('')}
+                                    </tbody>
+                                    <tfoot class="bg-gray-50">
+                                        <tr>
+                                            <td colspan="3" class="px-4 py-3 text-right font-semibold text-gray-700">合计金额</td>
+                                            <td class="px-4 py-3 text-right font-bold text-lg text-blue-600">¥${expense.amount.toLocaleString('zh-CN', {minimumFractionDigits: 2})}</td>
+                                            <td></td>
+                                        </tr>
+                                    </tfoot>
+                                </table>
+                            </div>
+                        </div>
+                        
+                        <!-- Receipts Preview -->
+                        <div>
+                            <h4 class="text-sm font-semibold text-gray-700 mb-3 flex items-center gap-2">
+                                <svg class="w-[16px] h-[16px] text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"/>
+                                </svg>
+                                发票凭证 (${expense.items.filter(i => i.receipt).length}张)
+                            </h4>
+                            <div class="grid grid-cols-4 gap-3">
+                                ${expense.items.filter(i => i.receipt).map((_, idx) => `
+                                    <div class="aspect-[3/4] bg-gradient-to-br from-gray-100 to-gray-200 rounded-lg border border-gray-200 flex items-center justify-center cursor-pointer hover:shadow-md transition-shadow">
+                                        <div class="text-center">
+                                            <svg class="w-10 h-10 mx-auto text-gray-400 mb-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/>
+                                            </svg>
+                                            <p class="text-xs text-gray-500">发票${idx + 1}</p>
+                                        </div>
+                                    </div>
+                                `).join('')}
+                            </div>
+                        </div>
+                        
+                        <!-- Approval History -->
+                        <div>
+                            <h4 class="text-sm font-semibold text-gray-700 mb-3 flex items-center gap-2">
+                                <svg class="w-[16px] h-[16px] text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                                </svg>
+                                审批流程
+                            </h4>
+                            <div class="relative pl-8">
+                                <div class="absolute left-[5px] top-2 bottom-2 w-0.5 bg-gray-200"></div>
+                                ${expense.history.map((step, idx) => {
+                                    const isLast = idx === expense.history.length - 1;
+                                    const isApproved = step.action.includes('通过');
+                                    const isRejected = step.action.includes('拒绝');
+                                    const isPending = step.action.includes('审批中') || step.action.includes('提交');
+                                    return `
+                                        <div class="relative pb-6 ${isLast ? '' : ''}">
+                                            <div class="timeline-dot absolute -left-8 top-1 ${isApproved ? 'completed' : isRejected ? 'bg-red-500' : isPending && isLast ? 'current' : 'completed'}"></div>
+                                            <div>
+                                                <div class="flex items-center gap-2 mb-1">
+                                                    <span class="font-medium text-gray-800 text-sm">${step.action}</span>
+                                                    <span class="text-xs text-gray-400">${step.time}</span>
+                                                </div>
+                                                <p class="text-sm text-gray-600">${step.user}</p>
+                                                ${step.comment ? `<p class="text-sm text-gray-500 mt-1 bg-gray-50 p-2 rounded">${step.comment}</p>` : ''}
+                                            </div>
+                                        </div>
+                                    `;
+                                }).join('')}
+                                ${expense.status === 'pending' ? `
+                                    <div class="relative">
+                                        <div class="timeline-dot absolute -left-8 top-1 upcoming"></div>
+                                        <div>
+                                            <p class="font-medium text-gray-400 text-sm">财务审批</p>
+                                            <p class="text-sm text-gray-400">等待处理</p>
+                                        </div>
+                                    </div>
+                                ` : ''}
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- Sidebar Info -->
+                    <div class="space-y-4">
+                        <div class="bg-gray-50 rounded-xl p-4">
+                            <h4 class="text-sm font-semibold text-gray-700 mb-4">基本信息</h4>
+                            <div class="space-y-3 text-sm">
+                                <div class="flex justify-between">
+                                    <span class="text-gray-500">申请人</span>
+                                    <span class="font-medium text-gray-800">${expense.applicant}</span>
+                                </div>
+                                <div class="flex justify-between">
+                                    <span class="text-gray-500">部门</span>
+                                    <span class="font-medium text-gray-800">${expense.department}</span>
+                                </div>
+                                <div class="flex justify-between">
+                                    <span class="text-gray-500">报销类型</span>
+                                    <span class="font-medium text-gray-800">${expense.type}</span>
+                                </div>
+                                <div class="flex justify-between">
+                                    <span class="text-gray-500">费用发生日期</span>
+                                    <span class="font-medium text-gray-800">${expense.date}</span>
+                                </div>
+                                <div class="flex justify-between">
+                                    <span class="text-gray-500">提交日期</span>
+                                    <span class="font-medium text-gray-800">${expense.submitDate}</span>
+                                </div>
+                                <div class="flex justify-between">
+                                    <span class="text-gray-500">审批人</span>
+                                    <span class="font-medium text-gray-800">${expense.approver}</span>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div class="bg-gradient-to-br from-blue-50 to-indigo-50 rounded-xl p-4 border border-blue-100">
+                            <h4 class="text-sm font-semibold text-gray-700 mb-2 flex items-center gap-2">
+                                <svg class="w-[16px] h-[16px] text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                                </svg>
+                                审批提示
+                            </h4>
+                            <ul class="text-xs text-gray-600 space-y-1.5">
+                                <li>• 请核对发票信息与费用明细是否一致</li>
+                                <li>• 差旅标准：住宿不超过500元/晚</li>
+                                <li>• 餐饮标准：人均不超过200元/餐</li>
+                                <li>• 如有疑问请退回并注明原因</li>
+                            </ul>
+                        </div>
+                    </div>
+                </div>
+            `;
+            
+            const actions = document.getElementById('modalActions');
+            if (expense.status === 'pending') {
+                actions.innerHTML = `
+                    <div class="flex items-center justify-between">
+                        <p class="text-sm text-gray-500">请仔细核对费用明细后进行审批操作</p>
+                        <div class="flex gap-3">
+                            <button onclick="closeModal()" class="px-5 py-2.5 text-sm text-gray-600 hover:bg-gray-200 rounded-lg transition-colors font-medium">取消</button>
+                            <button onclick="openRejectModalFromDetail()" class="btn-danger px-6 py-2.5 rounded-lg text-sm font-medium flex items-center gap-2">
+                                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
+                                </svg>
+                                拒绝
+                            </button>
+                            <button onclick="approveExpense('${expense.id}')" class="btn-success px-6 py-2.5 rounded-lg text-sm font-medium flex items-center gap-2">
+                                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/>
+                                </svg>
+                                审批通过
+                            </button>
+                        </div>
+                    </div>
+                `;
+            } else if (expense.status === 'approved') {
+                actions.innerHTML = `
+                    <div class="flex items-center justify-between">
+                        <p class="text-sm text-green-600 flex items-center gap-2">
+                            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                            </svg>
+                            该报销单于 ${expense.approveDate} 审批通过
+                        </p>
+                        <button onclick="closeModal()" class="px-5 py-2.5 text-sm text-gray-600 hover:bg-gray-200 rounded-lg transition-colors font-medium">关闭</button>
+                    </div>
+                `;
+            } else {
+                actions.innerHTML = `
+                    <div class="flex items-center justify-between">
+                        <p class="text-sm text-red-600 flex items-center gap-2">
+                            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                            </svg>
+                            该报销单于 ${expense.rejectDate} 被拒绝
+                        </p>
+                        <button onclick="closeModal()" class="px-5 py-2.5 text-sm text-gray-600 hover:bg-gray-200 rounded-lg transition-colors font-medium">关闭</button>
+                    </div>
+                `;
+            }
+            
+            document.getElementById('approvalModal').classList.remove('hidden');
+        }
+
+        function closeModal() {
+            document.getElementById('approvalModal').classList.add('hidden');
+            currentExpenseId = null;
+        }
+
+        function approveExpense(expenseId) {
+            const expense = expenses.find(e => e.id === expenseId);
+            if (expense) {
+                expense.status = 'approved';
+                expense.approveDate = new Date().toISOString().split('T')[0];
+                expense.history.push({
+                    action: '审批通过',
+                    user: '张明审批',
+                    time: new Date().toLocaleString('zh-CN'),
+                    comment: '审批通过，符合公司报销标准'
+                });
+                showToast('success', '审批通过', `${expense.title} 已成功审批通过`);
+                closeModal();
+                renderExpenseList(currentTab);
+                updateStats();
+            }
+        }
+
+        function quickApprove(expenseId) {
+            approveExpense(expenseId);
+        }
+
+        function openRejectModal(expenseId) {
+            currentExpenseId = expenseId;
+            document.getElementById('rejectReason').value = '';
+            document.getElementById('rejectModal').classList.remove('hidden');
+        }
+
+        function openRejectModalFromDetail() {
+            closeModal();
+            setTimeout(() => {
+                document.getElementById('rejectReason').value = '';
+                document.getElementById('rejectModal').classList.remove('hidden');
+            }, 200);
+        }
+
+        function closeRejectModal() {
+            document.getElementById('rejectModal').classList.add('hidden');
+        }
+
+        function confirmReject() {
+            const reason = document.getElementById('rejectReason').value.trim();
+            if (!reason) {
+                showToast('error', '请填写拒绝原因', '拒绝报销时必须填写原因说明');
+                return;
+            }
+            
+            const expense = expenses.find(e => e.id === currentExpenseId);
+            if (expense) {
+                expense.status = 'rejected';
+                expense.rejectDate = new Date().toISOString().split('T')[0];
+                expense.rejectReason = reason;
+                expense.history.push({
+                    action: '已拒绝',
+                    user: '张明审批',
+                    time: new Date().toLocaleString('zh-CN'),
+                    comment: reason
+                });
+                showToast('warning', '已拒绝', `${expense.title} 已被拒绝`);
+                closeRejectModal();
+                renderExpenseList(currentTab);
+                updateStats();
+            }
+        }
+
+        function showToast(type, title, message) {
+            const container = document.getElementById('toastContainer');
+            const colors = {
+                success: 'bg-green-500',
+                error: 'bg-red-500',
+                warning: 'bg-amber-500',
+                info: 'bg-blue-500'
+            };
+            
+            const toast = document.createElement('div');
+            toast.className = `toast ${colors[type]} text-white px-5 py-3 rounded-lg shadow-lg flex items-start gap-3 max-w-sm`;
+            toast.innerHTML = `
+                <div class="flex-1">
+                    <p class="font-medium text-sm">${title}</p>
+                    <p class="text-xs opacity-90 mt-0.5">${message}</p>
+                </div>
+            `;
+            container.appendChild(toast);
+            
+            setTimeout(() => toast.remove(), 3000);
+        }
+
+        function updateStats() {
+            const pendingCount = expenses.filter(e => e.status === 'pending').length;
+            const statCards = document.querySelectorAll('.stat-card');
+            if (statCards[0]) {
+                statCards[0].querySelector('p.text-2xl').textContent = pendingCount;
+            }
+            
+            // Update tab counts
+            document.querySelector('[data-tab="pending"]').textContent = `待审批 (${pendingCount})`;
+        }
+
+        function showCreateModal() {
+            showToast('info', '提示', '新建报销功能演示中...');
+        }
+
+        // Tab switching
+        document.querySelectorAll('.tab-btn').forEach(btn => {
+            btn.addEventListener('click', () => {
+                document.querySelectorAll('.tab-btn').forEach(b => {
+                    b.classList.remove('tab-active');
+                    b.classList.add('text-gray-500');
+                });
+                btn.classList.add('tab-active');
+                btn.classList.remove('text-gray-500');
+                currentTab = btn.dataset.tab;
+                renderExpenseList(currentTab);
+            });
+        });
+
+        // Sidebar navigation
+        document.querySelectorAll('.sidebar-item').forEach(item => {
+            item.addEventListener('click', (e) => {
+                e.preventDefault();
+                document.querySelectorAll('.sidebar-item').forEach(i => {
+                    i.classList.remove('active');
+                    i.classList.add('text-gray-300');
+                });
+                item.classList.add('active');
+                item.classList.remove('text-gray-300');
+                
+                const page = item.dataset.page;
+                if (page === 'approvals') {
+                    document.getElementById('pageTitle').textContent = '待我审批';
+                    document.getElementById('pageSubtitle').textContent = '处理待审批的报销申请';
+                    document.querySelector('.tab-btn[data-tab="pending"]').click();
+                } else if (page === 'my-expenses') {
+                    document.getElementById('pageTitle').textContent = '我的报销';
+                    document.getElementById('pageSubtitle').textContent = '查看您提交的报销申请';
+                    document.querySelector('.tab-btn[data-tab="all"]').click();
+                } else {
+                    document.getElementById('pageTitle').textContent = '工作台';
+                    document.getElementById('pageSubtitle').textContent = '欢迎回来，您有 ' + expenses.filter(e => e.status === 'pending').length + ' 项待审批报销单';
+                    renderExpenseList('pending');
+                }
+            });
+        });
+
+        // Keyboard shortcuts
+        document.addEventListener('keydown', (e) => {
+            if (e.key === 'Escape') {
+                closeModal();
+                closeRejectModal();
+            }
+        });
+
+        // Initialize
+        renderExpenseList('pending');
+    </script>
+</body>
+</html>
